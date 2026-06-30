@@ -2,6 +2,7 @@ const DB_NAME = 'lawatan-tapak-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'app';
 const STATE_KEY = 'current-project';
+const APP_VERSION_LABEL = 'Hafize | Ver1.0.0';
 
 const photoCategories = [
   'Umum',
@@ -151,6 +152,7 @@ function normalizeState() {
     caption: photo.caption || `Gambar ${index + 1}`,
     observation: photo.observation || '',
     recommendation: photo.recommendation || '',
+    coordinateFallback: Boolean(photo.coordinateFallback),
     annotations: normalizeAnnotations(photo.annotations)
   }));
 }
@@ -311,6 +313,7 @@ async function handleFiles(fileList, mode) {
       state.photos.push(photo);
       selectedPhotoId = photo.id;
     }
+    ensurePhotoCoordinateCoverage();
     await saveState(state);
     renderAll();
     toast(`${files.length} gambar berjaya ditambah.`);
@@ -354,6 +357,7 @@ async function createPhotoFromFile(file, mode, currentPosition) {
     caption: file.name ? file.name.replace(/\.[^.]+$/, '') : `Gambar ${state.photos.length + 1}`,
     observation: '',
     recommendation: '',
+    coordinateFallback: false,
     annotations: []
   };
 }
@@ -377,6 +381,7 @@ function addDemoPhoto() {
     caption: `Contoh gambar ${count + 1}`,
     observation: 'Keadaan tapak direkodkan semasa lawatan.',
     recommendation: 'Semakan lanjut boleh dibuat jika perlu.',
+    coordinateFallback: false,
     annotations: []
   };
   state.photos.push(demo);
@@ -393,10 +398,14 @@ function hydrateProjectForm() {
 }
 
 function renderAll() {
+  const coordinatesBackfilled = ensurePhotoCoordinateCoverage();
   renderStats();
   renderPhotos();
   renderMap();
   renderReport();
+  if (coordinatesBackfilled) {
+    saveDebounced();
+  }
 }
 
 function renderStats() {
@@ -472,6 +481,7 @@ function renderPhotos() {
 }
 
 function renderMap() {
+  ensurePhotoCoordinateCoverage();
   const located = state.photos.filter(hasCoordinate);
   const visitLocation = getVisitLocation();
   const mapPoints = visitLocation ? [visitLocation, ...located] : located;
@@ -481,6 +491,16 @@ function renderMap() {
   if (!mapPoints.length) {
     el.mapBoard.innerHTML = '<div class="map-empty">Belum ada GPS lawatan atau gambar dengan koordinat. Ambil GPS lawatan, ambil GPS semasa gambar atau isi latitude dan longitude secara manual.</div>';
     el.mapFrame.removeAttribute('src');
+    state.photos.forEach((photo) => {
+      const button = document.createElement('button');
+      button.className = 'map-list-item';
+      button.type = 'button';
+      button.innerHTML = `
+        <strong>${escapeHtml(photo.caption || 'Gambar tapak')}</strong>
+        <span>Koordinat belum direkod</span>
+      `;
+      el.mapList.appendChild(button);
+    });
     return;
   }
 
@@ -546,6 +566,7 @@ function renderMap() {
     button.innerHTML = `
       <strong>${escapeHtml(photo.caption || 'Gambar tapak')}</strong>
       <span>${formatCoordinate(photo)} | ${formatLevel(photo)}</span>
+      <small>${escapeHtml(photo.locationSource || '-')}</small>
     `;
     button.addEventListener('click', () => {
       selectedPhotoId = photo.id;
@@ -554,10 +575,7 @@ function renderMap() {
     el.mapList.appendChild(button);
   });
 
-  const selected = selectedPhotoId === 'visit-location'
-    ? visitLocation
-    : findPhoto(selectedPhotoId) || located[0] || visitLocation;
-  el.mapFrame.src = googleEmbedUrl(selected);
+  el.mapFrame.src = googleOverviewUrl(mapPoints);
 }
 
 function renderReport() {
@@ -570,15 +588,17 @@ function renderReport() {
       <td>${escapeHtml(photo.category || '-')}</td>
       <td>${escapeHtml(formatCoordinate(photo))}</td>
       <td>${escapeHtml(formatLevel(photo))}</td>
-      <td>${escapeHtml(photo.observation || '-')}</td>
+      <td>${escapeHtml(photo.locationSource || '-')}</td>
     </tr>
   `).join('');
 
   const photoBlocks = photos.map((photo, index) => `
     <section class="report-photo">
-      <h3>Gambar ${index + 1}: ${escapeHtml(photo.caption || 'Gambar tapak')}</h3>
+      <h3>Gambar ${index + 1}</h3>
+      <p class="report-photo-caption">${escapeHtml(photo.caption || 'Gambar tapak')}</p>
       ${reportImageHtml(photo, index)}
       <table class="report-meta">
+        <tr><th>Kategori</th><td>${escapeHtml(photo.category || '-')}</td></tr>
         <tr><th>Koordinat</th><td>${escapeHtml(formatCoordinate(photo))}</td></tr>
         <tr><th>Altitude</th><td>${escapeHtml(formatAltitude(photo))}</td></tr>
         <tr><th>Adjusted level</th><td>${escapeHtml(formatLevel(photo))}</td></tr>
@@ -587,20 +607,23 @@ function renderReport() {
       </table>
       ${photo.observation ? `<p><strong>Pemerhatian:</strong> ${escapeHtml(photo.observation)}</p>` : ''}
       ${photo.recommendation ? `<p><strong>Cadangan:</strong> ${escapeHtml(photo.recommendation)}</p>` : ''}
-      ${hasCoordinate(photo) ? `<p><a href="${googleSearchUrl(photo)}" target="_blank" rel="noreferrer">Buka lokasi di Google Maps</a></p>` : ''}
     </section>
   `).join('');
 
   el.printArea.innerHTML = `
     <header class="report-cover">
-      <h1>Laporan Lawatan Tapak</h1>
-      <p><strong>${escapeHtml(project.projectName || '')}</strong></p>
-      <p>${escapeHtml(project.locationName || '')}</p>
+      <div>
+        <p class="report-doc-label">LAPORAN LAWATAN TAPAK</p>
+        <h1>${escapeHtml(project.projectName || 'Projek Lawatan Tapak')}</h1>
+        <p>${escapeHtml(project.locationName || '')}</p>
+      </div>
     </header>
 
-    <h2>Maklumat projek</h2>
+    <h2>1.0 Maklumat Lawatan</h2>
     <table class="report-meta">
+      <tr><th>Nama projek</th><td>${escapeHtml(project.projectName || '')}</td></tr>
       <tr><th>Klien</th><td>${escapeHtml(project.clientName || '')}</td></tr>
+      <tr><th>Lokasi tapak</th><td>${escapeHtml(project.locationName || '')}</td></tr>
       <tr><th>Tarikh lawatan</th><td>${escapeHtml(project.visitDate || '')}</td></tr>
       <tr><th>Pegawai</th><td>${escapeHtml(project.officerName || '')}</td></tr>
       <tr><th>Cuaca</th><td>${escapeHtml(project.weather || '')}</td></tr>
@@ -611,9 +634,9 @@ function renderReport() {
       <tr><th>Sumber lokasi lawatan</th><td>${escapeHtml(project.visitLocationSource || '-')}</td></tr>
     </table>
 
-    ${project.generalNotes ? `<h2>Catatan umum</h2><p>${escapeHtml(project.generalNotes)}</p>` : ''}
+    ${project.generalNotes ? `<h2>2.0 Catatan Umum</h2><p>${escapeHtml(project.generalNotes)}</p>` : ''}
 
-    <h2>Jadual gambar</h2>
+    <h2>3.0 Ringkasan Gambar</h2>
     <table class="report-table">
       <thead>
         <tr>
@@ -622,16 +645,18 @@ function renderReport() {
           <th>Kategori</th>
           <th>Koordinat</th>
           <th>Level</th>
-          <th>Pemerhatian</th>
+          <th>Sumber lokasi</th>
         </tr>
       </thead>
       <tbody>${rows || '<tr><td colspan="6">Belum ada gambar.</td></tr>'}</tbody>
     </table>
 
-    <h2>Lampiran gambar</h2>
+    <h2>4.0 Lampiran Gambar</h2>
     ${photoBlocks || '<p>Belum ada gambar untuk laporan.</p>'}
 
-    ${project.conclusion ? `<h2>Kesimpulan</h2><p>${escapeHtml(project.conclusion)}</p>` : ''}
+    ${project.conclusion ? `<h2>5.0 Kesimpulan</h2><p>${escapeHtml(project.conclusion)}</p>` : ''}
+
+    <footer class="report-footer">${APP_VERSION_LABEL}</footer>
   `;
 }
 
@@ -672,6 +697,7 @@ function updatePhotoField(id, field, rawValue, input) {
 
   if (field === 'latitude' || field === 'longitude') {
     photo.locationSource = 'Manual';
+    photo.coordinateFallback = false;
   }
 
   renderStats();
@@ -936,6 +962,7 @@ async function refreshPhotoGps(id) {
     photo.verticalAccuracy = numberOrNull(position.coords.altitudeAccuracy);
     photo.adjustedLevel = photo.altitude == null ? null : photo.altitude + state.project.levelOffset;
     photo.locationSource = `GPS ketepatan tinggi (${formatAccuracy(position.coords.accuracy)})`;
+    photo.coordinateFallback = false;
     selectedPhotoId = photo.id;
     renderAll();
     saveDebounced();
@@ -961,6 +988,66 @@ function findPhoto(id) {
 
 function hasCoordinate(photo) {
   return isFiniteNumber(photo.latitude) && isFiniteNumber(photo.longitude);
+}
+
+function ensurePhotoCoordinateCoverage() {
+  const reference = coordinateReference();
+  if (!reference) {
+    return false;
+  }
+
+  let changed = false;
+  state.photos.forEach((photo) => {
+    if (hasCoordinate(photo)) {
+      return;
+    }
+
+    photo.latitude = reference.latitude;
+    photo.longitude = reference.longitude;
+    if (photo.altitude == null && isFiniteNumber(reference.altitude)) {
+      photo.altitude = reference.altitude;
+      photo.adjustedLevel = photo.altitude + state.project.levelOffset;
+    }
+    if (photo.horizontalAccuracy == null && isFiniteNumber(reference.horizontalAccuracy)) {
+      photo.horizontalAccuracy = reference.horizontalAccuracy;
+    }
+    if (photo.verticalAccuracy == null && isFiniteNumber(reference.verticalAccuracy)) {
+      photo.verticalAccuracy = reference.verticalAccuracy;
+    }
+    photo.locationSource = reference.source;
+    photo.coordinateFallback = true;
+    changed = true;
+  });
+
+  return changed;
+}
+
+function coordinateReference() {
+  const visitLocation = getVisitLocation();
+  if (visitLocation) {
+    return {
+      latitude: visitLocation.latitude,
+      longitude: visitLocation.longitude,
+      altitude: visitLocation.altitude,
+      horizontalAccuracy: state.project.visitAccuracy,
+      verticalAccuracy: state.project.visitVerticalAccuracy,
+      source: 'Fallback GPS lawatan'
+    };
+  }
+
+  const locatedPhoto = state.photos.find(hasCoordinate);
+  if (!locatedPhoto) {
+    return null;
+  }
+
+  return {
+    latitude: locatedPhoto.latitude,
+    longitude: locatedPhoto.longitude,
+    altitude: locatedPhoto.altitude,
+    horizontalAccuracy: locatedPhoto.horizontalAccuracy,
+    verticalAccuracy: locatedPhoto.verticalAccuracy,
+    source: `Fallback koordinat daripada ${locatedPhoto.caption || 'gambar lain'}`
+  };
 }
 
 function hasVisitCoordinate() {
@@ -1335,8 +1422,8 @@ function markerLayout(photos, bounds) {
       const angle = (Math.PI * 2 * index) / group.length - Math.PI / 2;
       const radius = Math.min(7, 3.4 + group.length * 0.55);
       positions.set(photo.id, {
-        left: clamp(baseLeft + Math.cos(angle) * radius, 5, 95),
-        top: clamp(baseTop + Math.sin(angle) * radius, 5, 95)
+        left: clamp(baseLeft + Math.cos(angle) * radius, 10, 90),
+        top: clamp(baseTop + Math.sin(angle) * radius, 14, 90)
       });
     });
   });
@@ -1345,11 +1432,11 @@ function markerLayout(photos, bounds) {
 }
 
 function projectLatitude(latitude, bounds) {
-  return 92 - ((latitude - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 84;
+  return 88 - ((latitude - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 76;
 }
 
 function projectLongitude(longitude, bounds) {
-  return 8 + ((longitude - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 84;
+  return 10 + ((longitude - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 80;
 }
 
 function googleSearchUrl(photo) {
@@ -1358,6 +1445,32 @@ function googleSearchUrl(photo) {
 
 function googleEmbedUrl(photo) {
   return `https://www.google.com/maps?q=${photo.latitude},${photo.longitude}&z=18&output=embed`;
+}
+
+function googleOverviewUrl(points) {
+  const located = points.filter(hasCoordinate);
+  if (located.length <= 1) {
+    return googleEmbedUrl(located[0]);
+  }
+
+  const origin = coordinatePair(located[0]);
+  const destination = coordinatePair(located[located.length - 1]);
+  const params = new URLSearchParams({
+    api: '1',
+    origin,
+    destination,
+    travelmode: 'walking',
+    output: 'embed'
+  });
+  const waypoints = located.slice(1, -1).map(coordinatePair);
+  if (waypoints.length) {
+    params.set('waypoints', waypoints.slice(0, 20).join('|'));
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function coordinatePair(point) {
+  return `${point.latitude},${point.longitude}`;
 }
 
 function statCard(label, value) {
@@ -1582,16 +1695,23 @@ function buildReportHtmlDocument() {
   <title>Laporan Lawatan Tapak</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.45; color: #17211f; margin: 24px; }
-    h1, h2, h3 { color: #0f3f3a; }
-    .report-cover { border-bottom: 3px solid #0f766e; padding-bottom: 18px; margin-bottom: 18px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 26px; line-height: 1.2; margin-bottom: 6px; }
+    h2 { font-size: 18px; margin: 22px 0 10px; border-bottom: 1px solid #d4dcda; padding-bottom: 6px; }
+    h3 { font-size: 15px; margin-bottom: 3px; }
+    .report-cover { border-bottom: 2px solid #2f3b38; padding-bottom: 16px; margin-bottom: 20px; }
+    .report-cover p { color: #45524f; margin-bottom: 4px; }
+    .report-doc-label { color: #17211f; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     table { width: 100%; border-collapse: collapse; margin: 14px 0 22px; }
-    th, td { border: 1px solid #cfdad7; padding: 8px; vertical-align: top; text-align: left; }
-    th { background: #e7f3f1; }
-    .report-photo { break-inside: avoid; border: 1px solid #cfdad7; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+    th, td { border: 1px solid #cfdad7; padding: 8px; vertical-align: top; text-align: left; font-size: 13px; }
+    th { width: 190px; background: #eef1f0; color: #25312e; font-weight: 700; }
+    .report-photo { break-inside: avoid; border: 1px solid #cfdad7; border-radius: 4px; padding: 12px; margin-bottom: 14px; }
+    .report-photo-caption { color: #45524f; font-weight: 600; margin-bottom: 10px; }
     img { width: 100%; max-height: 420px; object-fit: cover; border-radius: 6px; }
-    .report-image-wrap { position: relative; border-radius: 6px; overflow: hidden; background: #eef3f2; min-height: 170px; margin-bottom: 10px; }
+    .report-image-wrap { position: relative; border-radius: 4px; overflow: hidden; background: #eef3f2; min-height: 170px; margin-bottom: 10px; }
     .report-image-wrap img { display: block; margin-bottom: 0; }
     .annotation-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .report-footer { border-top: 1px solid #d4dcda; color: #687773; font-size: 10px; margin-top: 26px; padding-top: 8px; text-align: right; }
   </style>
 </head>
 <body>${el.printArea.innerHTML}</body>
