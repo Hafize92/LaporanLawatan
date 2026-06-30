@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ms">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f766e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Lawatan Tapak">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Lawatan Tapak</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="assets/icon.svg">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css?v=3">
+  </head>
+  <body>
+    <div class="app-frame">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Laporan Tapak</p>
+          <h1>Lawatan Tapak</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="installButton" type="button" title="Install app" hidden>
+            <span aria-hidden="true">+</span>
+          </button>
+          <span class="sync-pill" id="storageStatus">Offline ready</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <nav class="rail" aria-label="Menu utama">
+          <button class="nav-button active" type="button" data-view="projectView">
+            <span aria-hidden="true">#</span>
+            <span>Projek</span>
+          </button>
+          <button class="nav-button" type="button" data-view="photosView">
+            <span aria-hidden="true">+</span>
+            <span>Gambar</span>
+          </button>
+          <button class="nav-button" type="button" data-view="mapView">
+            <span aria-hidden="true">@</span>
+            <span>Peta</span>
+          </button>
+          <button class="nav-button" type="button" data-view="reportView">
+            <span aria-hidden="true">%</span>
+            <span>Laporan</span>
+          </button>
+          <button class="nav-button" type="button" data-view="settingsView">
+            <span aria-hidden="true">*</span>
+            <span>Tetapan</span>
+          </button>
+        </nav>
+
+        <section class="view active" id="projectView" aria-labelledby="projectTitle">
+          <div class="view-header">
+            <div>
+              <h2 id="projectTitle">Maklumat projek</h2>
+              <p>Isi maklumat asas, pegawai, offset level, GPS lawatan dan catatan lawatan.</p>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="visitGpsButton" type="button">Ambil GPS lawatan</button>
+            </div>
+          </div>
+
+          <div class="stats-grid" id="statsGrid"></div>
+
+          <div class="form-grid">
+            <label>
+              <span>Nama projek</span>
+              <input id="projectName" autocomplete="organization">
+            </label>
+            <label>
+              <span>Klien</span>
+              <input id="clientName">
+            </label>
+            <label>
+              <span>Lokasi tapak</span>
+              <input id="locationName">
+            </label>
+            <label>
+              <span>Tarikh lawatan</span>
+              <input id="visitDate" type="date">
+            </label>
+            <label>
+              <span>Pegawai</span>
+              <input id="officerName">
+            </label>
+            <label>
+              <span>Cuaca</span>
+              <input id="weather">
+            </label>
+            <label>
+              <span>Offset level / benchmark (m)</span>
+              <input id="levelOffset" type="number" step="0.001">
+            </label>
+            <label>
+              <span>Latitude lawatan</span>
+              <input id="visitLatitude" type="number" step="0.000001">
+            </label>
+            <label>
+              <span>Longitude lawatan</span>
+              <input id="visitLongitude" type="number" step="0.000001">
+            </label>
+            <label>
+              <span>Altitude lawatan (m)</span>
+              <input id="visitAltitude" type="number" step="0.001">
+            </label>
+            <label>
+              <span>Akurasi GPS lawatan (m)</span>
+              <input id="visitAccuracy" type="number" step="0.001">
+            </label>
+            <label>
+              <span>Sumber lokasi lawatan</span>
+              <input id="visitLocationSource">
+            </label>
+          </div>
+
+          <div class="two-column">
+            <label>
+              <span>Catatan umum</span>
+              <textarea id="generalNotes" rows="6"></textarea>
+            </label>
+            <label>
+              <span>Kesimpulan</span>
+              <textarea id="conclusion" rows="6"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="view" id="photosView" aria-labelledby="photosTitle">
+          <div class="view-header">
+            <div>
+              <h2 id="photosTitle">Gambar lawatan</h2>
+              <p>Ambil gambar, simpan koordinat, masukkan level dan tambah ayat pemerhatian.</p>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="cameraButton" type="button">Ambil gambar</button>
+              <button id="galleryButton" type="button">Import gambar</button>
+              <button id="demoButton" type="button">Tambah demo</button>
+            </div>
+          </div>
+
+          <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+          <input id="galleryInput" type="file" accept="image/*" multiple hidden>
+
+          <div class="notice" id="photoNotice">
+            GPS ketepatan tinggi akan mengambil beberapa sampel dan memilih bacaan dengan akurasi terbaik. Jika GPS tidak tersedia, koordinat dan altitude boleh diisi secara manual.
+          </div>
+
+          <div class="photo-grid" id="photoGrid"></div>
+        </section>
+
+        <section class="view" id="mapView" aria-labelledby="mapTitle">
+          <div class="view-header">
+            <div>
+              <h2 id="mapTitle">Peta dan koordinat</h2>
+              <p>Semua gambar yang mempunyai koordinat ditanda pada peta projek dan boleh dibuka di Google Maps.</p>
+            </div>
+            <a class="button-link" id="routeLink" href="https://www.google.com/maps" target="_blank" rel="noreferrer">Buka laluan Google Maps</a>
+          </div>
+
+          <div class="map-layout">
+            <div class="map-board" id="mapBoard" aria-label="Peta ringkas gambar"></div>
+            <aside class="map-side">
+              <h3>Marker gambar</h3>
+              <div id="mapList"></div>
+              <iframe id="mapFrame" title="Google Maps preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="reportView" aria-labelledby="reportTitle">
+          <div class="view-header">
+            <div>
+              <h2 id="reportTitle">Laporan</h2>
+              <p>Semak template laporan, kemudian cetak atau simpan sebagai PDF.</p>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="printButton" type="button">Print / Save PDF</button>
+              <button id="downloadHtmlButton" type="button">Download HTML</button>
+              <button id="exportJsonButton" type="button">Export data</button>
+            </div>
+          </div>
+
+          <article class="report-paper" id="printArea"></article>
+        </section>
+
+        <section class="view" id="settingsView" aria-labelledby="settingsTitle">
+          <div class="view-header">
+            <div>
+              <h2 id="settingsTitle">Tetapan dan install</h2>
+              <p>Pasang aplikasi ini pada iPhone, Android atau Windows, serta import/export data projek.</p>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <section class="settings-panel">
+              <h3>Install aplikasi</h3>
+              <ol>
+                <li>Publish folder ini ke HTTPS supaya app boleh dipasang tanpa perlu WiFi yang sama.</li>
+                <li>Windows/Android Chrome atau Edge: tekan butang install pada address bar atau butang Install jika muncul.</li>
+                <li>iPhone Safari: tekan Share, kemudian Add to Home Screen.</li>
+              </ol>
+              <button class="primary" id="installButtonPanel" type="button">Install jika disokong</button>
+            </section>
+
+            <section class="settings-panel">
+              <h3>Data projek</h3>
+              <div class="button-row">
+                <button id="exportJsonButton2" type="button">Export JSON</button>
+                <button id="importJsonButton" type="button">Import JSON</button>
+              </div>
+              <input id="importJsonInput" type="file" accept="application/json" hidden>
+              <p class="small-text">Data disimpan dalam peranti ini menggunakan IndexedDB. Export JSON boleh digunakan untuk backup atau pindah peranti.</p>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="photoCardTemplate">
+      <article class="photo-card">
+        <div class="photo-media"></div>
+        <div class="photo-fields">
+          <div class="photo-title-row">
+            <h3></h3>
+            <a class="small-link" target="_blank" rel="noreferrer">Google Maps</a>
+          </div>
+          <div class="form-grid compact">
+            <label>
+              <span>Tajuk gambar</span>
+              <input data-field="caption">
+            </label>
+            <label>
+              <span>Kategori</span>
+              <select data-field="category">
+                <option>Umum</option>
+                <option>Kerja tanah</option>
+                <option>Jalan</option>
+                <option>Sistem saliran</option>
+                <option>Retikulasi air</option>
+                <option>Pembentungan</option>
+              </select>
+            </label>
+            <label>
+              <span>Latitude</span>
+              <input data-field="latitude" type="number" step="0.000001">
+            </label>
+            <label>
+              <span>Longitude</span>
+              <input data-field="longitude" type="number" step="0.000001">
+            </label>
+            <label>
+              <span>Altitude (m)</span>
+              <input data-field="altitude" type="number" step="0.001">
+            </label>
+            <label>
+              <span>Adjusted level (m)</span>
+              <input data-field="adjustedLevel" type="number" step="0.001">
+            </label>
+          </div>
+          <div class="sentence-row">
+            <button type="button" data-sentence="site-ok">Ayat keadaan</button>
+            <button type="button" data-sentence="action">Ayat tindakan</button>
+            <button type="button" data-sentence="monitor">Ayat pantau</button>
+            <button type="button" data-refresh-gps>Ambil GPS semasa</button>
+          </div>
+          <div class="annotation-panel">
+            <div class="annotation-controls">
+              <label>
+                <span>Markup</span>
+                <select data-annotation-type>
+                  <option value="arrow">Anak panah</option>
+                  <option value="circle">Bulatan</option>
+                </select>
+              </label>
+              <label>
+                <span>Warna</span>
+                <input data-annotation-color type="color" value="#e11d48">
+              </label>
+              <label>
+                <span>Diskripsi</span>
+                <input data-annotation-text placeholder="cth: paip / retak / arah aliran">
+              </label>
+            </div>
+            <div class="sentence-row">
+              <span class="draw-hint">Lukis terus atas gambar: tekan dan drag dengan mouse atau touch.</span>
+              <button type="button" data-undo-annotation>Undo markup</button>
+              <button type="button" data-clear-annotations>Padam markup</button>
+            </div>
+          </div>
+          <label>
+            <span>Pemerhatian</span>
+            <textarea data-field="observation" rows="4"></textarea>
+          </label>
+          <label>
+            <span>Cadangan</span>
+            <textarea data-field="recommendation" rows="4"></textarea>
+          </label>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js?v=3" defer></script>
+  </body>
+</html>
