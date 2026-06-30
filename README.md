@@ -8,6 +8,12 @@ Ini ialah aplikasi laporan lawatan tapak versi PWA yang boleh dipasang secara in
 
 Untuk tidak bergantung kepada WiFi yang sama, publish folder ini ke hosting HTTPS. Lihat [docs/DEPLOY_HTTPS.md](docs/DEPLOY_HTTPS.md).
 
+Jika guna repository GitHub ini, workflow GitHub Pages akan publish aplikasi ke:
+
+```text
+https://hafize92.github.io/LaporanLawatan/
+```
+
 ## Fungsi
 
 - Maklumat projek dan lawatan

@@ -28,12 +28,26 @@ Untuk GitHub, push folder `lawatan_tapak_pwa` dan aktifkan GitHub Pages. Untuk u
 
 ## GitHub Pages
 
-1. Buat repository baru.
-2. Upload semua fail dalam `lawatan_tapak_pwa`.
-3. Pergi ke `Settings` > `Pages`.
-4. Pilih branch `main` dan folder root.
-5. Simpan.
-6. GitHub akan beri link HTTPS.
+Repository ini sudah ada workflow GitHub Pages:
+
+```text
+.github/workflows/deploy-pages.yml
+```
+
+Workflow itu publish folder `lawatan_tapak_pwa` sebagai root aplikasi. Selepas workflow selesai, link dijangka:
+
+```text
+https://hafize92.github.io/LaporanLawatan/
+```
+
+Jika link belum aktif:
+
+1. Buka repository `https://github.com/Hafize92/LaporanLawatan`.
+2. Pergi ke `Settings` > `Pages`.
+3. Pilih source `GitHub Actions`.
+4. Pergi ke tab `Actions`.
+5. Run workflow `Deploy PWA to GitHub Pages`.
+6. Tunggu status workflow menjadi hijau.
 
 ## Vercel
 
