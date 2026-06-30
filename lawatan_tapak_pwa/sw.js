@@ -1,9 +1,9 @@
-const CACHE_NAME = 'lawatan-tapak-v4';
+const CACHE_NAME = 'lawatan-tapak-v5';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './styles.css?v=3',
-  './app.js?v=3',
+  './styles.css?v=5',
+  './app.js?v=5',
   './manifest.webmanifest',
   './assets/icon.svg'
 ];

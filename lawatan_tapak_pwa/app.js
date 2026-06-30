@@ -2,6 +2,8 @@ const DB_NAME = 'lawatan-tapak-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'app';
 const STATE_KEY = 'current-project';
+const SESSION_AUTH_KEY = 'lawatanTapakAuthenticated';
+const DEFAULT_LOGIN_CODE = '123456';
 
 const photoCategories = [
   'Umum',
@@ -33,8 +35,13 @@ let saveTimer;
 let selectedPhotoId = null;
 let deferredInstallPrompt = null;
 let drawingSession = null;
+let isAuthenticated = false;
 
 const el = {
+  loginScreen: byId('loginScreen'),
+  loginForm: byId('loginForm'),
+  loginCode: byId('loginCode'),
+  logoutButton: byId('logoutButton'),
   storageStatus: byId('storageStatus'),
   installButton: byId('installButton'),
   installButtonPanel: byId('installButtonPanel'),
@@ -57,7 +64,11 @@ const el = {
   exportJsonButton: byId('exportJsonButton'),
   exportJsonButton2: byId('exportJsonButton2'),
   importJsonButton: byId('importJsonButton'),
-  importJsonInput: byId('importJsonInput')
+  importJsonInput: byId('importJsonInput'),
+  currentLoginCode: byId('currentLoginCode'),
+  newLoginCode: byId('newLoginCode'),
+  confirmLoginCode: byId('confirmLoginCode'),
+  changeLoginCodeButton: byId('changeLoginCodeButton')
 };
 
 const projectFields = [
@@ -86,6 +97,7 @@ async function init() {
   bindReportActions();
   bindImportExport();
   bindInstall();
+  bindAuthActions();
   registerServiceWorker();
 
   state = await loadState();
@@ -93,6 +105,11 @@ async function init() {
   selectedPhotoId = state.photos[0]?.id ?? null;
   hydrateProjectForm();
   renderAll();
+  if (sessionStorage.getItem(SESSION_AUTH_KEY) === 'true') {
+    unlockApp();
+  } else {
+    lockApp();
+  }
   updateOnlineStatus();
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
@@ -123,12 +140,20 @@ function createDefaultState() {
       generalNotes: 'Lawatan tapak dijalankan bagi merekod keadaan semasa.',
       conclusion: ''
     },
+    security: {
+      loginCode: DEFAULT_LOGIN_CODE
+    },
     photos: []
   };
 }
 
 function normalizeState() {
   state.project = { ...createDefaultState().project, ...(state.project || {}) };
+  state.security = {
+    ...createDefaultState().security,
+    ...(state.security || {})
+  };
+  state.security.loginCode = String(state.security.loginCode || DEFAULT_LOGIN_CODE);
   state.project.levelOffset = numberOrNull(state.project.levelOffset) ?? 0;
   state.project.visitLatitude = numberOrNull(state.project.visitLatitude);
   state.project.visitLongitude = numberOrNull(state.project.visitLongitude);
@@ -290,6 +315,70 @@ function bindInstall() {
 
   el.installButton.addEventListener('click', install);
   el.installButtonPanel.addEventListener('click', install);
+}
+
+function bindAuthActions() {
+  el.loginForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const enteredCode = el.loginCode.value.trim();
+    if (enteredCode === state.security.loginCode) {
+      unlockApp();
+      toast('Login berjaya.');
+      return;
+    }
+
+    el.loginCode.select();
+    toast('Login code tidak betul.');
+  });
+
+  el.logoutButton.addEventListener('click', () => {
+    lockApp();
+    toast('Anda telah logout.');
+  });
+
+  el.changeLoginCodeButton.addEventListener('click', changeLoginCode);
+}
+
+function unlockApp() {
+  isAuthenticated = true;
+  sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+  document.body.classList.remove('auth-locked');
+  el.loginCode.value = '';
+}
+
+function lockApp() {
+  isAuthenticated = false;
+  sessionStorage.removeItem(SESSION_AUTH_KEY);
+  document.body.classList.add('auth-locked');
+  setTimeout(() => el.loginCode.focus(), 50);
+}
+
+function changeLoginCode() {
+  const currentCode = el.currentLoginCode.value.trim();
+  const newCode = el.newLoginCode.value.trim();
+  const confirmCode = el.confirmLoginCode.value.trim();
+
+  if (currentCode !== state.security.loginCode) {
+    toast('Code semasa tidak betul.');
+    return;
+  }
+
+  if (newCode.length < 4) {
+    toast('Code baru mesti sekurang-kurangnya 4 aksara.');
+    return;
+  }
+
+  if (newCode !== confirmCode) {
+    toast('Sahkan code baru tidak sama.');
+    return;
+  }
+
+  state.security.loginCode = newCode;
+  el.currentLoginCode.value = '';
+  el.newLoginCode.value = '';
+  el.confirmLoginCode.value = '';
+  saveDebounced();
+  toast('Login code berjaya ditukar.');
 }
 
 async function handleFiles(fileList, mode) {
