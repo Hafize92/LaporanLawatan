@@ -11,23 +11,9 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="assets/icon.svg">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
   </head>
-  <body class="auth-locked">
-    <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
-      <form class="login-card" id="loginForm">
-        <p class="eyebrow">Akses aplikasi</p>
-        <h1 id="loginTitle">Lawatan Tapak</h1>
-        <p>Masukkan login code untuk buka aplikasi laporan lawatan tapak.</p>
-        <label>
-          <span>Login code</span>
-          <input id="loginCode" type="password" inputmode="numeric" autocomplete="current-password" placeholder="123456">
-        </label>
-        <button class="primary" type="submit">Login</button>
-        <p class="small-text">Default login code: <strong>123456</strong>. Tukar code ini dalam tab Tetapan selepas login.</p>
-      </form>
-    </section>
-
+  <body>
     <div class="app-frame">
       <header class="topbar">
         <div>
@@ -37,9 +23,6 @@
         <div class="top-actions">
           <button class="icon-button" id="installButton" type="button" title="Install app" hidden>
             <span aria-hidden="true">+</span>
-          </button>
-          <button class="icon-button" id="logoutButton" type="button" title="Logout">
-            <span aria-hidden="true">!</span>
           </button>
           <span class="sync-pill" id="storageStatus">Offline ready</span>
         </div>
@@ -172,9 +155,8 @@
           <div class="view-header">
             <div>
               <h2 id="mapTitle">Peta dan koordinat</h2>
-              <p>Semua gambar yang mempunyai koordinat ditanda pada peta projek dan boleh dibuka di Google Maps.</p>
+              <p>Semua gambar yang mempunyai koordinat ditanda pada peta projek dan preview Google Maps.</p>
             </div>
-            <a class="button-link" id="routeLink" href="https://www.google.com/maps" target="_blank" rel="noreferrer">Buka laluan Google Maps</a>
           </div>
 
           <div class="map-layout">
@@ -232,27 +214,6 @@
               <p class="small-text">Data disimpan dalam peranti ini menggunakan IndexedDB. Export JSON boleh digunakan untuk backup atau pindah peranti.</p>
             </section>
 
-            <section class="settings-panel">
-              <h3>Login code</h3>
-              <div class="form-grid compact">
-                <label>
-                  <span>Code semasa</span>
-                  <input id="currentLoginCode" type="password" inputmode="numeric">
-                </label>
-                <label>
-                  <span>Code baru</span>
-                  <input id="newLoginCode" type="password" inputmode="numeric">
-                </label>
-                <label>
-                  <span>Sahkan code baru</span>
-                  <input id="confirmLoginCode" type="password" inputmode="numeric">
-                </label>
-              </div>
-              <div class="button-row settings-actions">
-                <button id="changeLoginCodeButton" type="button">Tukar login code</button>
-              </div>
-              <p class="small-text">Login ini ialah local app lock untuk peranti ini. Untuk akaun cloud sebenar, aplikasi perlukan backend/auth server.</p>
-            </section>
           </div>
         </section>
       </main>
@@ -307,6 +268,10 @@
           </div>
           <div class="annotation-panel">
             <div class="annotation-controls">
+              <label class="draw-toggle">
+                <input data-draw-enabled type="checkbox">
+                <span>Aktifkan lukis</span>
+              </label>
               <label>
                 <span>Markup</span>
                 <select data-annotation-type>
@@ -324,7 +289,7 @@
               </label>
             </div>
             <div class="sentence-row">
-              <span class="draw-hint">Lukis terus atas gambar: tekan dan drag dengan mouse atau touch.</span>
+              <span class="draw-hint">Tick Aktifkan lukis, kemudian tekan dan drag atas gambar.</span>
               <button type="button" data-undo-annotation>Undo markup</button>
               <button type="button" data-clear-annotations>Padam markup</button>
             </div>
@@ -341,6 +306,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=5" defer></script>
+    <script src="app.js?v=6" defer></script>
   </body>
 </html>

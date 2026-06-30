@@ -33,7 +33,6 @@ https://hafize92.github.io/LaporanLawatan/
 - Export HTML laporan
 - Export/import data JSON
 - Simpan data offline menggunakan IndexedDB
-- Login code tempatan dengan default `123456`
 
 ## Cara Dapat Link Independent
 
@@ -43,7 +42,7 @@ Untuk Android/iPhone/Windows tanpa perlu WiFi yang sama:
 2. Guna link HTTPS yang diberi oleh hosting tersebut.
 3. Buka link itu pada iPhone, Android atau Windows.
 4. Install app melalui browser.
-5. Login pertama guna code `123456`, kemudian tukar code dalam tab Tetapan.
+5. App boleh terus digunakan.
 
 Panduan penuh ada di [docs/DEPLOY_HTTPS.md](docs/DEPLOY_HTTPS.md).
 
