@@ -48,14 +48,12 @@ Rujuk [DEPLOY_HTTPS.md](DEPLOY_HTTPS.md). Selepas publish, gunakan link HTTPS ya
 ## 5. Cara Guna Selepas Install
 
 1. Buka aplikasi.
-2. Login guna default code `123456`.
-3. Tukar login code dalam tab `Tetapan`.
-4. Isi maklumat projek.
-5. Tekan `Ambil gambar` atau `Import gambar`.
-6. Benarkan akses lokasi jika diminta.
-7. Semak koordinat, altitude dan adjusted level.
-8. Tambah ayat pemerhatian atau cadangan.
-9. Lukis anak panah lurus atau bulatan pada gambar jika perlu.
-10. Buka tab `Peta` untuk semak marker.
-11. Buka tab `Laporan`.
-12. Tekan `Print / Save PDF`.
+2. Isi maklumat projek.
+3. Tekan `Ambil gambar` atau `Import gambar`.
+4. Benarkan akses lokasi jika diminta.
+5. Semak koordinat, altitude dan adjusted level.
+6. Tambah ayat pemerhatian atau cadangan.
+7. Tick `Aktifkan lukis`, kemudian lukis anak panah lurus atau bulatan pada gambar jika perlu.
+8. Buka tab `Peta` untuk semak marker.
+9. Buka tab `Laporan`.
+10. Tekan `Print / Save PDF`.

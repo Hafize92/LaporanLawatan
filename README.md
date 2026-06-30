@@ -27,16 +27,6 @@ https://hafize92.github.io/LaporanLawatan/
 
 Jika link belum aktif, pergi ke `Settings` > `Pages` di GitHub dan pastikan source Pages ialah `GitHub Actions`, kemudian run workflow `Deploy PWA to GitHub Pages`.
 
-## Login
-
-Code login default:
-
-```text
-123456
-```
-
-Tukar code selepas login melalui tab `Tetapan`.
-
 ## Fungsi Utama
 
 - Laporan lawatan tapak dengan maklumat projek, tarikh, pegawai, cuaca dan nota.

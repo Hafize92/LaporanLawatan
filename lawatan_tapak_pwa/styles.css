@@ -81,51 +81,6 @@ button:disabled {
   flex-direction: column;
 }
 
-body.auth-locked .app-frame {
-  display: none;
-}
-
-.login-screen {
-  min-height: 100vh;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
-  background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(15, 118, 110, 0.08) 1px, transparent 1px),
-    #f6f8f7;
-  background-size: 38px 38px, 38px 38px, auto;
-}
-
-body.auth-locked .login-screen {
-  display: flex;
-}
-
-.login-card {
-  width: min(420px, 100%);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  padding: 24px;
-}
-
-.login-card h1 {
-  margin: 0 0 8px;
-  font-size: 30px;
-}
-
-.login-card p {
-  color: var(--muted);
-  margin: 0 0 16px;
-}
-
-.login-card button {
-  width: 100%;
-  margin-top: 14px;
-}
-
 .topbar {
   height: 74px;
   display: flex;
@@ -394,8 +349,13 @@ select:focus {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
+}
+
+.photo-media.draw-enabled {
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .photo-media img {
@@ -422,8 +382,20 @@ select:focus {
 
 .annotation-controls {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 84px minmax(180px, 2fr);
+  grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) 84px minmax(180px, 2fr);
   gap: 10px;
+}
+
+.draw-toggle {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draw-toggle input {
+  width: 18px;
+  height: 18px;
 }
 
 .annotation-controls input[type="color"] {

@@ -2,8 +2,6 @@ const DB_NAME = 'lawatan-tapak-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'app';
 const STATE_KEY = 'current-project';
-const SESSION_AUTH_KEY = 'lawatanTapakAuthenticated';
-const DEFAULT_LOGIN_CODE = '123456';
 
 const photoCategories = [
   'Umum',
@@ -35,13 +33,8 @@ let saveTimer;
 let selectedPhotoId = null;
 let deferredInstallPrompt = null;
 let drawingSession = null;
-let isAuthenticated = false;
 
 const el = {
-  loginScreen: byId('loginScreen'),
-  loginForm: byId('loginForm'),
-  loginCode: byId('loginCode'),
-  logoutButton: byId('logoutButton'),
   storageStatus: byId('storageStatus'),
   installButton: byId('installButton'),
   installButtonPanel: byId('installButtonPanel'),
@@ -57,18 +50,13 @@ const el = {
   mapBoard: byId('mapBoard'),
   mapList: byId('mapList'),
   mapFrame: byId('mapFrame'),
-  routeLink: byId('routeLink'),
   printArea: byId('printArea'),
   printButton: byId('printButton'),
   downloadHtmlButton: byId('downloadHtmlButton'),
   exportJsonButton: byId('exportJsonButton'),
   exportJsonButton2: byId('exportJsonButton2'),
   importJsonButton: byId('importJsonButton'),
-  importJsonInput: byId('importJsonInput'),
-  currentLoginCode: byId('currentLoginCode'),
-  newLoginCode: byId('newLoginCode'),
-  confirmLoginCode: byId('confirmLoginCode'),
-  changeLoginCodeButton: byId('changeLoginCodeButton')
+  importJsonInput: byId('importJsonInput')
 };
 
 const projectFields = [
@@ -97,7 +85,6 @@ async function init() {
   bindReportActions();
   bindImportExport();
   bindInstall();
-  bindAuthActions();
   registerServiceWorker();
 
   state = await loadState();
@@ -105,11 +92,6 @@ async function init() {
   selectedPhotoId = state.photos[0]?.id ?? null;
   hydrateProjectForm();
   renderAll();
-  if (sessionStorage.getItem(SESSION_AUTH_KEY) === 'true') {
-    unlockApp();
-  } else {
-    lockApp();
-  }
   updateOnlineStatus();
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
@@ -140,20 +122,12 @@ function createDefaultState() {
       generalNotes: 'Lawatan tapak dijalankan bagi merekod keadaan semasa.',
       conclusion: ''
     },
-    security: {
-      loginCode: DEFAULT_LOGIN_CODE
-    },
     photos: []
   };
 }
 
 function normalizeState() {
   state.project = { ...createDefaultState().project, ...(state.project || {}) };
-  state.security = {
-    ...createDefaultState().security,
-    ...(state.security || {})
-  };
-  state.security.loginCode = String(state.security.loginCode || DEFAULT_LOGIN_CODE);
   state.project.levelOffset = numberOrNull(state.project.levelOffset) ?? 0;
   state.project.visitLatitude = numberOrNull(state.project.visitLatitude);
   state.project.visitLongitude = numberOrNull(state.project.visitLongitude);
@@ -317,70 +291,6 @@ function bindInstall() {
   el.installButtonPanel.addEventListener('click', install);
 }
 
-function bindAuthActions() {
-  el.loginForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const enteredCode = el.loginCode.value.trim();
-    if (enteredCode === state.security.loginCode) {
-      unlockApp();
-      toast('Login berjaya.');
-      return;
-    }
-
-    el.loginCode.select();
-    toast('Login code tidak betul.');
-  });
-
-  el.logoutButton.addEventListener('click', () => {
-    lockApp();
-    toast('Anda telah logout.');
-  });
-
-  el.changeLoginCodeButton.addEventListener('click', changeLoginCode);
-}
-
-function unlockApp() {
-  isAuthenticated = true;
-  sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-  document.body.classList.remove('auth-locked');
-  el.loginCode.value = '';
-}
-
-function lockApp() {
-  isAuthenticated = false;
-  sessionStorage.removeItem(SESSION_AUTH_KEY);
-  document.body.classList.add('auth-locked');
-  setTimeout(() => el.loginCode.focus(), 50);
-}
-
-function changeLoginCode() {
-  const currentCode = el.currentLoginCode.value.trim();
-  const newCode = el.newLoginCode.value.trim();
-  const confirmCode = el.confirmLoginCode.value.trim();
-
-  if (currentCode !== state.security.loginCode) {
-    toast('Code semasa tidak betul.');
-    return;
-  }
-
-  if (newCode.length < 4) {
-    toast('Code baru mesti sekurang-kurangnya 4 aksara.');
-    return;
-  }
-
-  if (newCode !== confirmCode) {
-    toast('Sahkan code baru tidak sama.');
-    return;
-  }
-
-  state.security.loginCode = newCode;
-  el.currentLoginCode.value = '';
-  el.newLoginCode.value = '';
-  el.confirmLoginCode.value = '';
-  saveDebounced();
-  toast('Login code berjaya ditukar.');
-}
-
 async function handleFiles(fileList, mode) {
   const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
   if (!files.length) {
@@ -532,6 +442,10 @@ function renderPhotos() {
       media.appendChild(placeholder);
     }
     media.insertAdjacentHTML('beforeend', annotationSvg(photo));
+    const drawToggle = node.querySelector('[data-draw-enabled]');
+    drawToggle.addEventListener('change', () => {
+      media.classList.toggle('draw-enabled', drawToggle.checked);
+    });
     media.addEventListener('pointerdown', (event) => startAnnotationDraw(photo.id, node, media, event));
     media.addEventListener('pointermove', (event) => updateAnnotationDraw(media, event));
     media.addEventListener('pointerup', (event) => finishAnnotationDraw(media, event));
@@ -566,7 +480,6 @@ function renderMap() {
 
   if (!mapPoints.length) {
     el.mapBoard.innerHTML = '<div class="map-empty">Belum ada GPS lawatan atau gambar dengan koordinat. Ambil GPS lawatan, ambil GPS semasa gambar atau isi latitude dan longitude secara manual.</div>';
-    el.routeLink.href = 'https://www.google.com/maps';
     el.mapFrame.removeAttribute('src');
     return;
   }
@@ -576,6 +489,7 @@ function renderMap() {
   }
 
   const bounds = getBounds(mapPoints);
+  const markerPositions = markerLayout(located, bounds);
   if (visitLocation) {
     const visitMarker = document.createElement('button');
     visitMarker.className = `map-marker visit-marker${selectedPhotoId === 'visit-location' ? ' active' : ''}`;
@@ -592,10 +506,14 @@ function renderMap() {
   }
 
   located.forEach((photo) => {
+    const position = markerPositions.get(photo.id) || {
+      left: projectLongitude(photo.longitude, bounds),
+      top: projectLatitude(photo.latitude, bounds)
+    };
     const marker = document.createElement('button');
     marker.className = `map-marker${photo.id === selectedPhotoId ? ' active' : ''}`;
-    marker.style.left = `${projectLongitude(photo.longitude, bounds)}%`;
-    marker.style.top = `${projectLatitude(photo.latitude, bounds)}%`;
+    marker.style.left = `${position.left}%`;
+    marker.style.top = `${position.top}%`;
     marker.title = photo.caption || 'Gambar tapak';
     marker.type = 'button';
     marker.innerHTML = `<span>${state.photos.indexOf(photo) + 1}</span>`;
@@ -640,7 +558,6 @@ function renderMap() {
     ? visitLocation
     : findPhoto(selectedPhotoId) || located[0] || visitLocation;
   el.mapFrame.src = googleEmbedUrl(selected);
-  el.routeLink.href = googleDirectionsUrl(mapPoints);
 }
 
 function renderReport() {
@@ -782,6 +699,10 @@ function appendSentence(id, key) {
 
 function startAnnotationDraw(photoId, cardNode, media, event) {
   if (!event.isPrimary || (event.button !== undefined && event.button !== 0)) {
+    return;
+  }
+
+  if (!cardNode.querySelector('[data-draw-enabled]')?.checked) {
     return;
   }
 
@@ -1390,6 +1311,39 @@ function getBounds(photos) {
   return { minLat, maxLat, minLon, maxLon };
 }
 
+function markerLayout(photos, bounds) {
+  const grouped = new Map();
+  photos.forEach((photo) => {
+    const key = `${formatNumber(photo.latitude, 6)},${formatNumber(photo.longitude, 6)}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key).push(photo);
+  });
+
+  const positions = new Map();
+  grouped.forEach((group) => {
+    group.forEach((photo, index) => {
+      const baseLeft = projectLongitude(photo.longitude, bounds);
+      const baseTop = projectLatitude(photo.latitude, bounds);
+
+      if (group.length === 1) {
+        positions.set(photo.id, { left: baseLeft, top: baseTop });
+        return;
+      }
+
+      const angle = (Math.PI * 2 * index) / group.length - Math.PI / 2;
+      const radius = Math.min(7, 3.4 + group.length * 0.55);
+      positions.set(photo.id, {
+        left: clamp(baseLeft + Math.cos(angle) * radius, 5, 95),
+        top: clamp(baseTop + Math.sin(angle) * radius, 5, 95)
+      });
+    });
+  });
+
+  return positions;
+}
+
 function projectLatitude(latitude, bounds) {
   return 92 - ((latitude - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 84;
 }
@@ -1404,26 +1358,6 @@ function googleSearchUrl(photo) {
 
 function googleEmbedUrl(photo) {
   return `https://www.google.com/maps?q=${photo.latitude},${photo.longitude}&z=18&output=embed`;
-}
-
-function googleDirectionsUrl(photos) {
-  const located = photos.filter(hasCoordinate);
-  if (!located.length) {
-    return 'https://www.google.com/maps';
-  }
-  const origin = `${located[0].latitude},${located[0].longitude}`;
-  const destinationPhoto = located[located.length - 1];
-  const destination = `${destinationPhoto.latitude},${destinationPhoto.longitude}`;
-  const params = new URLSearchParams({
-    api: '1',
-    origin,
-    destination
-  });
-  const waypoints = located.slice(1, -1).map((photo) => `${photo.latitude},${photo.longitude}`);
-  if (waypoints.length) {
-    params.set('waypoints', waypoints.join('|'));
-  }
-  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 function statCard(label, value) {
